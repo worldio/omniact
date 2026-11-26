@@ -50,11 +50,10 @@ The full pipeline, from generating data with [omniact-molmospaces](https://githu
 
 ## Model Checkpoints
 
-The policy trained for 520K steps is on Hugging Face at [xiangfan00/omniact](https://huggingface.co/xiangfan00/omniact). In a checkout of this repository:
+The policy trained for 520K steps is on Hugging Face at [xiangfan00/omniact](https://huggingface.co/xiangfan00/omniact):
 
 ```bash
-uv sync
-CKPT=$(uv run hf download xiangfan00/omniact -q)/omniact_520k.pt
+CKPT=$(uvx --from huggingface_hub hf download xiangfan00/omniact -q)/omniact_520k.pt
 ```
 
 Use `--checkpoint "$CKPT"` in the commands below.
