@@ -48,6 +48,17 @@ OmniAct is a cross-embodiment manipulation policy that conditions directly on ea
 
 The full pipeline, from generating data with [omniact-molmospaces](https://github.com/worldio/omniact-molmospaces) and preparing it with [wods](https://github.com/worldio/wods) to training and evaluating a policy, is in [docs/omniact_pipeline.md](docs/omniact_pipeline.md).
 
+## Model Checkpoints
+
+The policy trained for 520K steps is on Hugging Face at [xiangfan00/omniact](https://huggingface.co/xiangfan00/omniact). In a checkout of this repository:
+
+```bash
+uv sync
+CKPT=$(uv run hf download xiangfan00/omniact -q)/omniact_520k.pt
+```
+
+Use `--checkpoint "$CKPT"` in the commands below.
+
 ## Evaluation
 
 Evaluation runs closed-loop in simulation: an evaluation server from [worldio/omniact-molmospaces](https://github.com/worldio/omniact-molmospaces) rebuilds each episode and steps the physics, and `scripts/eval_omniact.py` runs the policy against it over gRPC. You need a trained checkpoint, the data root the policy was trained on (to select episodes), and the dataset's replay bundles (to rebuild them).
@@ -76,7 +87,7 @@ Evaluation runs closed-loop in simulation: an evaluation server from [worldio/om
    uv sync
    uv run python scripts/eval_omniact.py \
        --target localhost:50051 \
-       --checkpoint /path/to/checkpoint.pt \
+       --checkpoint "$CKPT" \
        --data /path/to/training_data \
        --replay-root /path/to/replay \
        --split unseen_embodiment_and_scene --split-seed 42 --n-keys 50
@@ -101,20 +112,12 @@ A real robot runs behind a server that speaks the simulator's Rollout protocol, 
    uv sync
    uv run python scripts/eval_omniact.py \
        --target <server-ip>:50051 \
-       --checkpoint /path/to/checkpoint.pt \
+       --checkpoint "$CKPT" \
        --prompt "pick up green cube and place in white plate" \
        --command pose --max-steps 300
    ```
 
 Each run is one episode, from the robot's start pose until `--max-steps`. `--command` picks the head that drives the arm: `joint` (the default), `pose` or `hybrid`. In the client's terminal, `p` pauses, `c` continues and `r` restarts the episode.
-
-## Release
-
-This repository will host the code, checkpoints and data. I'm working on it.
-
-- [x] Policy code: training and inference
-- [ ] Trained checkpoints
-- [x] Dataset generator
 
 ## Citation
 
