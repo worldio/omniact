@@ -1,0 +1,45 @@
+[project]
+name = "omniact"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+authors = []
+requires-python = "~=3.12.0"
+dependencies = [
+    "av>=12.0.0",
+    "diffusers>=0.35.0",
+    "fsspec>=2024.0.0",
+    "gcsfs>=2024.0.0",
+    "grpcio>=1.62.0",
+    "grpcio-tools>=1.62.0",
+    "loguru>=0.7.0",
+    "Pillow>=10.0.0",
+    "torch==2.8.0",
+    "torchdata>=0.10.0",
+    "torchvision==0.23.0",
+    "tqdm>=4.66.0",
+    "transformers>=4.40.0",
+    "wandb>=0.16.0",
+    "wods",
+    "zstandard>=0.22.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.2,<0.11.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+override-dependencies = [
+    # torch 2.8.0 requires triton==3.4.0 on Linux, but 3.4.0 has no aarch64 wheel
+    "triton==3.5.0; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "triton==3.4.0; sys_platform == 'linux' and platform_machine != 'aarch64'",
+
+    # mplib is unused here (no `import mplib`) and its ~14-lib C++ stack (OMPL/FCL/
+    # Pinocchio/...) has no aarch64 wheels or modules
+    "mplib; sys_platform == 'disabled'",
+
+    # Deps pull BOTH opencv-python and opencv-python-headless; installed together they
+    # clobber the same cv2/ namespace ("partially initialized module cv2"). Keep only
+    # the headless build; exclude the full opencv-python.
+    "opencv-python; sys_platform == 'disabled'",
+]

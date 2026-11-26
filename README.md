@@ -44,13 +44,77 @@ OmniAct is a cross-embodiment manipulation policy that conditions directly on ea
 | **Real OpenYAM**: arm and gripper zero-shot for OmniAct | **13/20** | 7/20&nbsp;(MolmoAct2) |
 | **Real Franka Panda**: arm zero-shot for OmniAct | 14/20 | 15/20&nbsp;(DreamZero) |
 
+## Training
+
+The full pipeline, from generating data with [omniact-molmospaces](https://github.com/worldio/omniact-molmospaces) and preparing it with [wods](https://github.com/worldio/wods) to training and evaluating a policy, is in [docs/omniact_pipeline.md](docs/omniact_pipeline.md).
+
+## Evaluation
+
+Evaluation runs closed-loop in simulation: an evaluation server from [worldio/omniact-molmospaces](https://github.com/worldio/omniact-molmospaces) rebuilds each episode and steps the physics, and `scripts/eval_omniact.py` runs the policy against it over gRPC. You need a trained checkpoint, the data root the policy was trained on (to select episodes), and the dataset's replay bundles (to rebuild them).
+
+1. Clone this repository and omniact-molmospaces:
+
+   ```bash
+   git clone https://github.com/worldio/omniact.git
+   git clone https://github.com/worldio/omniact-molmospaces.git
+   ```
+
+2. Set up omniact-molmospaces and start the evaluation server:
+
+   ```bash
+   cd omniact-molmospaces
+   uv venv --python 3.11 .venv
+   source .venv/bin/activate
+   uv pip install -e ".[mujoco]"
+   python -m molmo_spaces.rollout.eval_server --port 50051
+   ```
+
+3. In a second shell, set up this repository and run the evaluation:
+
+   ```bash
+   cd omniact
+   uv sync
+   uv run python scripts/eval_omniact.py \
+       --target localhost:50051 \
+       --checkpoint /path/to/checkpoint.pt \
+       --data /path/to/training_data \
+       --replay-root /path/to/replay \
+       --split unseen_embodiment_and_scene --split-seed 42 --n-keys 50
+   ```
+
+`--split` picks the episodes to evaluate: `seen`, `unseen_embodiment`, `unseen_scene`, `unseen_embodiment_and_scene` (new robots in new scenes, the OmniAct-Bench setting), or `all` (the default). `--split-seed` must equal the training run's, or seen and unseen episodes get mixed up. Paths can be local directories or fsspec URLs such as `gs://`. The script prints the success rate per split; add `--out <dir>` to also record every rollout. See [Stage 5 of the pipeline doc](docs/omniact_pipeline.md#stage-5-closed-loop-evaluation) for the other options and for running on several GPUs.
+
+## Real-World Deployment
+
+A real robot runs behind a server that speaks the simulator's Rollout protocol, so `scripts/eval_omniact.py` drives it as it drives the simulator, with the task given by `--prompt`. Each robot's server is in its own repository, along with its setup, camera calibration and serve commands:
+
+| Robot | Server |
+|---|---|
+| DROID: Franka Research 3, Robotiq 2F-85, ZED cameras | [worldio/droid_deploy](https://github.com/worldio/droid_deploy) |
+| Anvil OpenYAM | [worldio/openyam_deploy](https://github.com/worldio/openyam_deploy) |
+
+1. On the robot's computer, set up the server, calibrate the cameras and start the server, following that repository's README.
+
+2. On the GPU machine, in a checkout of this repository, run the policy against it:
+
+   ```bash
+   uv sync
+   uv run python scripts/eval_omniact.py \
+       --target <server-ip>:50051 \
+       --checkpoint /path/to/checkpoint.pt \
+       --prompt "pick up green cube and place in white plate" \
+       --command pose --max-steps 300
+   ```
+
+Each run is one episode, from the robot's start pose until `--max-steps`. `--command` picks the head that drives the arm: `joint` (the default), `pose` or `hybrid`. In the client's terminal, `p` pauses, `c` continues and `r` restarts the episode.
+
 ## Release
 
 This repository will host the code, checkpoints and data. I'm working on it.
 
-- [ ] Policy code: training and inference
+- [x] Policy code: training and inference
 - [ ] Trained checkpoints
-- [ ] Dataset generator
+- [x] Dataset generator
 
 ## Citation
 
